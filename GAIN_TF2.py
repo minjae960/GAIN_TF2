@@ -13,8 +13,9 @@ missing_col = 'ocec'
 missing_rate = 0.2
 hint_rate = 0.9
 alpha = 100
-batch_size = 1000
-epochs = 2
+batch_size = 360
+epochs = 3
+sq = 48
 
 # 1. data preparation
 # 1-1) load dataset, data
@@ -70,17 +71,17 @@ miss_norm_x = np.nan_to_num(miss_norm_x, 0)
 # 2-1) architecture
 def make_generator_model():
     model = tf.keras.Sequential()
-    model.add(layers.Dense(cols, activation='relu', kernel_initializer = 'glorot_normal', input_shape=(None, cols*2)))
-    model.add(layers.Dense(cols, activation='relu', kernel_initializer = 'glorot_normal'))
+    model.add(layers.LSTM(cols, kernel_initializer='glorot_normal', input_shape=(None, cols*2), return_sequences=True))
+    model.add(layers.LSTM(cols, kernel_initializer='glorot_normal', return_sequences=True))
     model.add(layers.Dense(cols, activation='sigmoid', kernel_initializer = 'glorot_normal'))
 
     return model
 
 def make_discriminator_model():
     model = tf.keras.Sequential()
-    model.add(layers.Dense(cols, activation='relu', kernel_initializer = 'glorot_normal', input_shape=(batch_size, cols*2)))
-    model.add(layers.Dense(cols, activation='relu', kernel_initializer = 'glorot_normal'))
-    model.add(layers.Dense(cols, activation='sigmoid', kernel_initializer = 'glorot_normal'))
+    model.add(layers.LSTM(cols, kernel_initializer='glorot_normal', input_shape=(sq, cols*2), return_sequences=True))
+    model.add(layers.LSTM(cols, kernel_initializer='glorot_normal', return_sequences=True))
+    model.add(layers.Dense(cols, activation='sigmoid', kernel_initializer='glorot_normal'))
 
     return model
 
@@ -107,17 +108,17 @@ generator = make_generator_model()
 discriminator = make_discriminator_model()
 
 def train_step(batch_x, batch_m):
-    Z_mb = np.random.uniform(0, 0.01, size = [batch_size, cols])
-    H_mb = batch_m * missing_sampler(1-hint_rate, batch_size, cols)
+    Z_mb = np.random.uniform(0, 0.01, size = [batch_size, sq, cols])
+    H_mb = batch_m * missing_sampler(1-hint_rate, sq, cols)
     X_mb = batch_m * batch_x + (1-batch_m) * Z_mb
 
-    G_input = tf.concat(values = [X_mb, batch_m], axis = 1)
+    G_input = tf.concat(values = [X_mb, batch_m], axis = 2)
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
         G_output = generator(G_input, training=True)
 
         D_input = batch_m * batch_x + (1-batch_m) * G_output
-        D_input = tf.concat(values = [D_input, H_mb], axis = 1)
+        D_input = tf.concat(values = [D_input, H_mb], axis = 2)
         D_output = discriminator(D_input, training=True)
 
         gen_loss = G_loss(batch_x, batch_m, G_output, D_output)
@@ -132,93 +133,40 @@ def train_step(batch_x, batch_m):
     return gen_loss, disc_loss
 
 # 2-5) batch function
-# def train_serial_batch(epochs): # batch data is serial but has gap
-#     for epoch in range(epochs):
-#         start = time.time()
-#
-#         for batch_idx in tqdm(range(int(rows/batch_size))):
-#             batch_x = miss_norm_x[batch_idx*batch_size:(batch_idx+1)*batch_size]
-#             batch_m = data_m[batch_idx*batch_size:(batch_idx+1)*batch_size]
-#
-#             gen_loss, disc_loss = train_step(batch_x, batch_m)
-#
-#         print('Time for epoch {} is {} sec'.format(epoch + 1, time.time() - start))
-#         print('Generator loss is {} and discriminator loss is {}'.format(gen_loss, disc_loss))
-#
-# def train_sequence_batch(epochs): # batch data is serial
-#     for epoch in range(epochs):
-#         start = time.time()
-#
-#         for batch_idx in tqdm(range(rows-batch_size+1)):
-#             batch_x = miss_norm_x[batch_idx:batch_idx + batch_size]
-#             batch_m = data_m[batch_idx:batch_idx + batch_size]
-#
-#             gen_loss, disc_loss = train_step(batch_x, batch_m)
-#
-#         print('Time for epoch {} is {} sec'.format(epoch + 1, time.time() - start))
-#         print('Generator loss is {} and discriminator loss is {}'.format(gen_loss, disc_loss))
+def train_lstm_batch(epochs): # inputting (batch_size, sq, cols) size data with random order
+    batch_x_sq = []
+    batch_m_sq = []
 
-def train_random_batch(epochs): # random batch data without sequence == original GAIN
-    start = time.time()
-    for epoch in tqdm(range(epochs)):
+    for i in range(rows-sq+1):
+        x = miss_norm_x[i:i+sq, :]
+        m = data_m[i:i+sq, :]
 
-        total_idx = np.random.permutation(rows)
-        batch_idx = total_idx[:batch_size]
+        batch_x_sq.append(x)
+        batch_m_sq.append(m)
 
-        batch_x = miss_norm_x[batch_idx, :]
-        batch_m = data_m[batch_idx, :]
+    batch_x_sq = np.array(batch_x_sq)
+    batch_m_sq = np.array(batch_m_sq)
 
-        gen_loss, disc_loss = train_step(batch_x, batch_m)
+    total_idx = np.random.permutation(rows - sq + 1)
 
-        if epoch % 500==0:
-            print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
-
-    print('Time for {} epochs is {} sec'.format(epochs, time.time() - start))
-    print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
-
-def train_random_sequence_batch(epochs): # random batch data with sequence
-    start = time.time()
-    for epoch in tqdm(range(epochs)):
-
-        total_idx = np.random.permutation(rows-batch_size)
-        batch_idx = total_idx[0]
-
-        batch_x = miss_norm_x[batch_idx:batch_idx + batch_size, :]
-        batch_m = data_m[batch_idx:batch_idx + batch_size, :]
-
-        gen_loss, disc_loss = train_step(batch_x, batch_m)
-
-        if epoch % 500==0:
-            print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
-
-    print('Time for {} epochs is {} sec'.format(epochs, time.time() - start))
-    print('Generator loss is {} and discriminator loss is {}'.format(gen_loss, disc_loss))
-
-def train_random_sequence_batch_all(epochs): # all random batch data with sequence
-    start = time.time()
-
-    total_idx = np.random.permutation(rows - batch_size)
     for epoch in range(epochs):
+        start = time.time()
         i = 0
-        for batch_idx in tqdm(total_idx):
-
-            batch_x = miss_norm_x[batch_idx:batch_idx + batch_size, :]
-            batch_m = data_m[batch_idx:batch_idx + batch_size, :]
+        for idx in tqdm(range(len(total_idx)-batch_size+1)):
+            batch_x = batch_x_sq[total_idx[i:i+batch_size]]
+            batch_m = batch_m_sq[total_idx[i:i+batch_size]]
 
             gen_loss, disc_loss = train_step(batch_x, batch_m)
 
-            i += 1
-
-            if i % 1000 == 0:
+            if i % 1000==0:
                 print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
 
-        print('Time for {} epochs is {} sec'.format(epoch+1, time.time() - start))
-
-    print('Generator loss is {} and discriminator loss is {}'.format(gen_loss, disc_loss))
-
+            i += 1
+        print('{}/{} finished. Time for {} epoch is {} sec'.format(epoch+1, epochs, epoch+1, time.time()-start))
+    print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
 
 # 2-6) train model
-train_random_sequence_batch_all(epochs)
+train_lstm_batch(epochs)
 
 
 # 3. Output (GAIN, KNN)
@@ -227,13 +175,16 @@ test_z = np.random.uniform(0, 0.01, size = [rows, cols])
 test_x = data_m * miss_norm_x + (1-data_m) * test_z
 test_x = np.concatenate((test_x, data_m), axis=1)
 
-GAIN_imputed = generator(test_x, training=False)
+test_x_sq = test_x.reshape(-1, rows, cols*2) # make test data 3 dimension
+
+GAIN_imputed = generator(test_x_sq, training=False)
 
 # 3-2) KNN imputed data
 imputer = KNNImputer(n_neighbors = 3)
 KNN_imputed = imputer.fit_transform(knn_norm_x)
 
 # 3-3) denormalization
+GAIN_imputed = GAIN_imputed[0]
 GAIN_imputed = GAIN_imputed * (max_vector - min_vector) + min_vector
 KNN_imputed = KNN_imputed * (max_vector - min_vector) + min_vector
 
