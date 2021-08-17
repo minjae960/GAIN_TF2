@@ -13,7 +13,6 @@ missing_col = 'ocec'
 missing_rate = 0.2
 hint_rate = 0.9
 alpha = 100
-# batch_size = 360
 epochs = 3
 sq = 48
 
