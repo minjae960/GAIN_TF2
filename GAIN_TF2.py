@@ -13,7 +13,7 @@ missing_col = 'ocec'
 missing_rate = 0.2
 hint_rate = 0.9
 alpha = 100
-batch_size = 360
+# batch_size = 360
 epochs = 3
 sq = 48
 
@@ -108,7 +108,7 @@ generator = make_generator_model()
 discriminator = make_discriminator_model()
 
 def train_step(batch_x, batch_m):
-    Z_mb = np.random.uniform(0, 0.01, size = [batch_size, sq, cols])
+    Z_mb = np.random.uniform(0, 0.01, size = [1, sq, cols])
     H_mb = batch_m * missing_sampler(1-hint_rate, sq, cols)
     X_mb = batch_m * batch_x + (1-batch_m) * Z_mb
 
@@ -133,7 +133,7 @@ def train_step(batch_x, batch_m):
     return gen_loss, disc_loss
 
 # 2-5) batch function
-def train_lstm_batch(epochs): # inputting (batch_size, sq, cols) size data with random order
+def train_lstm_gain(epochs): # inputting (1, sq, cols) size data with random order
     batch_x_sq = []
     batch_m_sq = []
 
@@ -152,9 +152,9 @@ def train_lstm_batch(epochs): # inputting (batch_size, sq, cols) size data with 
     for epoch in range(epochs):
         start = time.time()
         i = 0
-        for idx in tqdm(range(len(total_idx)-batch_size+1)):
-            batch_x = batch_x_sq[total_idx[i:i+batch_size]]
-            batch_m = batch_m_sq[total_idx[i:i+batch_size]]
+        for idx in tqdm(total_idx):
+            batch_x = batch_x_sq[[idx]]
+            batch_m = batch_m_sq[[idx]]
 
             gen_loss, disc_loss = train_step(batch_x, batch_m)
 
@@ -162,11 +162,11 @@ def train_lstm_batch(epochs): # inputting (batch_size, sq, cols) size data with 
                 print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
 
             i += 1
-        print('{}/{} finished. Time for {} epoch is {} sec'.format(epoch+1, epochs, epoch+1, time.time()-start))
+        print('Time for {} epochs is {} sec'.format(epoch + 1, time.time() - start))
     print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
 
 # 2-6) train model
-train_lstm_batch(epochs)
+train_lstm_gain(epochs)
 
 
 # 3. Output (GAIN, KNN)
@@ -175,7 +175,7 @@ test_z = np.random.uniform(0, 0.01, size = [rows, cols])
 test_x = data_m * miss_norm_x + (1-data_m) * test_z
 test_x = np.concatenate((test_x, data_m), axis=1)
 
-test_x_sq = test_x.reshape(-1, rows, cols*2) # make test data 3 dimension
+test_x_sq = test_x.reshape(-1, rows, cols*2)
 
 GAIN_imputed = generator(test_x_sq, training=False)
 
