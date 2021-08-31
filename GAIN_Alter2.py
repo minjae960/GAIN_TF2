@@ -1,4 +1,3 @@
-import numpy
 import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
@@ -11,8 +10,7 @@ import random
 
 Random_State = [777, 1004, 322]
 Missing_Col = ['ocec', 'elementals', 'ions', 'ocec-elementals', 'ion-ocec', 'ion-elementals', 'ions-ocec-elementals']
-# Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan']
-Data_Name = ['3_AP_1_Seoul', '3_AP_2_BR']
+Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan']
 missing_rate = 0.2
 hint_rate = 0.9
 alpha = 10
@@ -28,9 +26,9 @@ for seed in Random_State:
             # 1. data preparation
             # 1-1) load dataset, data
             if data_name == 'pm' or data_name == 'pm_wthr':
-                D = pd.read_csv('{}.csv'.format(data_name))
+                D = pd.read_csv('data/{}.csv'.format(data_name))
             else:
-                D = pd.read_csv('{}_raw.csv'.format(data_name)).drop(columns='date')
+                D = pd.read_csv('data/{}_raw.csv'.format(data_name)).drop(columns='date')
 
             R, C = D.shape
 
@@ -42,7 +40,7 @@ for seed in Random_State:
                            'elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br',
                                    'Pb'],
                            'ions': ['SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
-                           'ocecI'm-elementals': ['OC', 'EC', 'S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn',
+                           'ocec-elementals': ['OC', 'EC', 'S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn',
                                         'As', 'Se', 'Br', 'Pb'],
                            'ion-ocec': ['OC', 'EC', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
                            'ion-elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se',
@@ -52,7 +50,7 @@ for seed in Random_State:
                            }
 
                 if type == 'data_m':
-                    random_row = D.sample(int(len(D) * rate), random_state=777).index.tolist()
+                    random_row = D.sample(int(len(D) * rate), random_state=seed).index.tolist()
                 elif type == 'hint':
                     missing_num = int(rows * rate)
                     random_row = random.sample(range(rows), missing_num)
@@ -188,7 +186,8 @@ for seed in Random_State:
                             slope_GAIN, intercept_GAIN, r_value_GAIN, p_value_GAIN, std_err_GAIN = stats.linregress(REAL, GAIN)
 
                             print()
-                            print('{}th sample, Time for {} epochs is {} sec'.format(i+1, epoch + 1, time.time() - start))
+                            print('Data name: {}, Column: {}, Seed: {}'.format(data_name, missing_col, seed))
+                            print('{}th sample, time for {} epochs is {} sec'.format(i+1, epoch + 1, time.time() - start))
                             print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
                             print('GAIN r-square value is', round(r_value_GAIN ** 2, 4))
                             print()
@@ -233,7 +232,7 @@ for seed in Random_State:
 
             ## 3-4) r-square value
             def r_square():
-                D = pd.read_csv('{}_raw.csv'.format(data_name)).drop(columns='date')
+                D = pd.read_csv('data/{}_raw.csv'.format(data_name)).drop(columns='date')
                 REAL = D.to_numpy()[M == 0]
                 GAIN = GAIN_imputed[M == 0]
                 KNN = KNN_imputed[M == 0]
@@ -253,9 +252,10 @@ for seed in Random_State:
                 GAIN = pd.DataFrame(GAIN_imputed, columns=D.columns.tolist())
                 KNN = pd.DataFrame(KNN_imputed, columns=D.columns.tolist())
 
-                GAIN.to_csv('result/{}_result_{}_GAIN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
-                KNN.to_csv('result/{}_result_{}_KNN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
+                GAIN.to_csv('result2/{}_result_{}_GAIN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
+                KNN.to_csv('result2/{}_result_{}_KNN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
 
+                print()
                 print('{}_result_{}_GAIN|KNN_{}_1.csv. Saved GAIN and KNN results'.format(data_name, seed, missing_col))
                 print()
 
