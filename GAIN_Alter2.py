@@ -8,9 +8,13 @@ from sklearn.impute import KNNImputer
 import time
 import random
 
-Random_State = [777, 1004, 322]
+Data_Name = ['4_AP+Meteo_3_Ulsan']
+
 Missing_Col = ['ocec', 'elementals', 'ions', 'ocec-elementals', 'ion-ocec', 'ion-elementals', 'ions-ocec-elementals']
-Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan']
+
+Random_State = [777, 1004, 322]
+
+
 missing_rate = 0.2
 hint_rate = 0.9
 alpha = 10
@@ -18,9 +22,10 @@ epochs = 1500
 L = 720
 lr = 0.001
 
-for seed in Random_State:
+for data_name in Data_Name:
     for missing_col in Missing_Col:
-        for data_name in Data_Name:
+        for seed in Random_State:
+
             print(seed, missing_col, data_name)
 
             # 1. data preparation
