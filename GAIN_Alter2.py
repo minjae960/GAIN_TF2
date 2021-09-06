@@ -8,8 +8,8 @@ import time
 import random
 from sklearn.metrics import r2_score
 
-# Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', 끝
-#              '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan', 끝
+# Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', 민재 파이참
+#              '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan', 민재 파이참
 #              '3_AP_1_Seoul', '3_AP_2_BR', '3_AP_3_Ulsan', 서울, 백령: 혜리 / 울산: 민재 코랩, 끝
 #              '4_AP+Meteo_1_Seoul', '4_AP+Meteo_2_BR', '4_AP+Meteo_3_Ulsan'] 서울, 백령: 민재 파이참 / 울산: 영수 코랩
 
