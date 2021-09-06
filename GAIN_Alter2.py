@@ -3,16 +3,21 @@ from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from scipy import stats
 from sklearn.impute import KNNImputer
 import time
 import random
+from sklearn.metrics import r2_score
 
-Data_Name = ['4_AP+Meteo_3_Ulsan']
+# Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', 끝
+#              '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan', 끝
+#              '3_AP_1_Seoul', '3_AP_2_BR', '3_AP_3_Ulsan', 서울, 백령: 혜리 / 울산: 민재 코랩, 끝
+#              '4_AP+Meteo_1_Seoul', '4_AP+Meteo_2_BR', '4_AP+Meteo_3_Ulsan'] 서울, 백령: 민재 파이참 / 울산: 영수 코랩
+
+Data_Name = ['1_Basic_1_Seoul', '1_Basic_2_BR', '1_Basic_3_Ulsan', '2_Informed_1_Seoul', '2_Informed_2_BR', '2_Informed_3_Ulsan']
 
 Missing_Col = ['ocec', 'elementals', 'ions', 'ocec-elementals', 'ion-ocec', 'ion-elementals', 'ions-ocec-elementals']
 
-Random_State = [777, 1004, 322]
+Random_State = [1004, 322]
 
 
 missing_rate = 0.2
@@ -21,6 +26,17 @@ alpha = 10
 epochs = 1500
 L = 720
 lr = 0.001
+
+col_dic = {'ocec': ['OC', 'EC'],
+           'elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br', 'Pb'],
+           'ions': ['SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
+           'ocec-elementals': ['OC', 'EC', 'S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br', 'Pb'],
+           'ion-ocec': ['OC', 'EC', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
+           'ion-elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se',
+                              'Br', 'Pb', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
+           'ions-ocec-elementals': ['OC', 'EC', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+', 'S',
+                                    'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br', 'Pb']
+           }
 
 for data_name in Data_Name:
     for missing_col in Missing_Col:
@@ -40,19 +56,6 @@ for data_name in Data_Name:
             # 1-2) binary data, data_m
             def missing_sampler(rate, rows, cols, type):
                 unif_matrix = np.full((rows, cols), 1)
-
-                col_dic = {'ocec': ['OC', 'EC'],
-                           'elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br',
-                                   'Pb'],
-                           'ions': ['SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
-                           'ocec-elementals': ['OC', 'EC', 'S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn',
-                                        'As', 'Se', 'Br', 'Pb'],
-                           'ion-ocec': ['OC', 'EC', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
-                           'ion-elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se',
-                                       'Br', 'Pb', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+'],
-                           'ions-ocec-elementals': ['OC', 'EC', 'SO42-', 'NO3-', 'Cl-', 'Na+', 'NH4+', 'K+', 'Mg2+', 'Ca2+', 'S',
-                                   'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br', 'Pb']
-                           }
 
                 if type == 'data_m':
                     random_row = D.sample(int(len(D) * rate), random_state=seed).index.tolist()
@@ -185,16 +188,16 @@ for data_name in Data_Name:
                             GAIN_imputed = train_x * data_m + generator(test_x_sq, training=False)[0] * (1 - data_m)
                             GAIN_imputed = GAIN_imputed * (max_vector - min_vector) + min_vector
 
-                            REAL = data_ori_x[data_m == 0]
-                            GAIN = GAIN_imputed[data_m == 0]
+                            REAL = data_ori_x[data_m == 0].reshape(-1, len(col_dic[missing_col]))
+                            GAIN = np.array(GAIN_imputed[data_m == 0]).reshape(-1, len(col_dic[missing_col]))
 
-                            slope_GAIN, intercept_GAIN, r_value_GAIN, p_value_GAIN, std_err_GAIN = stats.linregress(REAL, GAIN)
+                            results_r2_GAIN = r2_score(REAL, GAIN)
 
                             print()
                             print('Data name: {}, Column: {}, Seed: {}'.format(data_name, missing_col, seed))
-                            print('{}th sample, time for {} epochs is {} sec'.format(i+1, epoch + 1, time.time() - start))
+                            print('{}/{}th sample, time for {} epochs is {} sec'.format(i+1, int(R/L), epoch + 1, time.time() - start))
                             print('G_loss is {} and D_loss is {}'.format(gen_loss, disc_loss))
-                            print('GAIN r-square value is', round(r_value_GAIN ** 2, 4))
+                            print('GAIN r-square value is', round(results_r2_GAIN, 4))
                             print()
 
                 # 2-6) train model
@@ -238,16 +241,16 @@ for data_name in Data_Name:
             ## 3-4) r-square value
             def r_square():
                 D = pd.read_csv('data/{}_raw.csv'.format(data_name)).drop(columns='date')
-                REAL = D.to_numpy()[M == 0]
-                GAIN = GAIN_imputed[M == 0]
-                KNN = KNN_imputed[M == 0]
+                REAL = D.to_numpy()[M == 0].reshape(int(R*missing_rate), -1)
+                GAIN = GAIN_imputed[M == 0].reshape(int(R*missing_rate), -1)
+                KNN = KNN_imputed[M == 0].reshape(int(R*missing_rate), -1)
 
-                slope_GAIN, intercept_GAIN, r_value_GAIN, p_value_GAIN, std_err_GAIN = stats.linregress(REAL, GAIN)
-                slope_KNN, intercept_KNN, r_value_KNN, p_value_KNN, std_err_KNN = stats.linregress(REAL, KNN)
+                results_r2_GAIN = r2_score(REAL, GAIN)
+                results_r2_KNN = r2_score(REAL, KNN)
 
                 print()
-                print('GAIN r-square value is', round(r_value_GAIN ** 2, 4))
-                print('KNN r-square value is', round(r_value_KNN ** 2, 4))
+                print('GAIN r-square value is', round(results_r2_GAIN, 4))
+                print('KNN r-square value is', round(results_r2_KNN, 4))
                 print()
 
             r_square()
@@ -257,8 +260,8 @@ for data_name in Data_Name:
                 GAIN = pd.DataFrame(GAIN_imputed, columns=D.columns.tolist())
                 KNN = pd.DataFrame(KNN_imputed, columns=D.columns.tolist())
 
-                GAIN.to_csv('result2/{}_result_{}_GAIN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
-                KNN.to_csv('result2/{}_result_{}_KNN_{}_1.csv'.format(data_name, seed, missing_col), index=False)
+                GAIN.to_csv('result3/{}_result_{}_GAIN_{}_2.csv'.format(data_name, seed, missing_col), index=False)
+                KNN.to_csv('result3/{}_result_{}_KNN_{}_2.csv'.format(data_name, seed, missing_col), index=False)
 
                 print()
                 print('{}_result_{}_GAIN|KNN_{}_1.csv. Saved GAIN and KNN results'.format(data_name, seed, missing_col))
