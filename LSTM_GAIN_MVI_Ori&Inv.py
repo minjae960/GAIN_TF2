@@ -37,6 +37,10 @@ for missing_col in Missing_Col:
     for seed in Random_State:
         for i in range(3):
 
+            print()
+            print(data_name, missing_col, seed)
+            print()
+
             # 1. data preparation
             # 1-1) load dataset, data
             D = pd.read_csv('{}/{}_raw.csv'.format(load_dir, data_name)).drop(columns='date')
@@ -272,8 +276,13 @@ for missing_col in Missing_Col:
             with open('data/GAIN_Results.txt', 'rb') as f:
                 record = pickle.load(f)
 
-
-            record.append([data_name, missing_col, seed, L, missing_rate, rsq[1], rsq[0], rsq[2], round(knn3, 4), round(knn5, 4), round(knn7, 4),
+            '''
+            data name, missing columns, seed number, data rows, missing rate,
+            original r2, inversed r2, mixed r2, knn3 r2, knn5 r2, knn7 r2,
+            imputed datas
+            '''
+            record.append([data_name, missing_col, seed, L, missing_rate,
+                           rsq[1], rsq[0], rsq[2], round(knn3, 4), round(knn5, 4), round(knn7, 4),
                            [ori, inv, mix, KNN_3_imputed, KNN_5_imputed, KNN_7_imputed]])
 
             with open('data/GAIN_Results.txt', 'wb') as f:
