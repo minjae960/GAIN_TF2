@@ -9,16 +9,16 @@ import random
 from sklearn.metrics import r2_score
 
 load_dir = 'data'
-save_dir = 'GAIN_r2'
+save_dir = 'GAIN_HP_Tuning'
 
 data_name = '4_AP+Meteo_1_Seoul'
-missing_col = 'ion-elementals'
+missing_col = 'elementals'
 seed = 777
 
 missing_rate = 0.2
 hint_rate = 0.8
 alpha = 10
-epochs = 1000
+epochs = int(2000/(missing_rate*10))
 L = 240
 lr = 0.0005
 
@@ -136,7 +136,7 @@ def train_step(batch_x, batch_m):
     H_mb = batch_m * missing_sampler(1-hint_rate, rows, cols, 'hint')
     X_mb = batch_m * batch_x + (1-batch_m) * Z_mb
 
-    G_input = tf.concat(values = [X_mb, batch_m], axis = 2)
+    G_input = np.concatenate((X_mb, batch_m), axis = 2)
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
         G_output = generator(G_input, training=True)
@@ -165,7 +165,7 @@ def train_lstm_gain(epochs): # inputting (1, sq, cols) size data with random ord
 
         gen_loss, disc_loss = train_step(batch_x, batch_m)
 
-        test_z = np.random.uniform(0, 0.01, size=[rows, cols])
+        test_z = np.random.uniform(0, 0.1, size=[rows, cols])
         test_x = data_m * train_x + (1 - data_m) * test_z
         test_x = np.concatenate((test_x, data_m), axis=1)
         test_x_sq = test_x.reshape(-1, rows, cols * 2)
@@ -196,7 +196,7 @@ train_lstm_gain(epochs)
 # 3. Output (GAIN, KNN)
 
 # 3-1) GAIN imputed data
-test_z = np.random.uniform(0, 0.01, size = [rows, cols])
+test_z = np.random.uniform(0, 0.1, size = [rows, cols])
 test_x = data_m * train_x + (1-data_m) * test_z
 test_x = np.concatenate((test_x, data_m), axis=1)
 test_x_sq = test_x.reshape(-1, rows, cols*2)
