@@ -11,8 +11,8 @@ from sklearn.metrics import r2_score
 load_dir = 'data'
 save_dir = 'GAIN_HP_Tuning'
 
-data_name = '4_AP+Meteo_1_Seoul'
-missing_col = 'elementals'
+data_name = '2_Informed_1_Seoul'
+missing_col = 'ions-ocec-elementals'
 seed = 777
 
 missing_rate = 0.2
