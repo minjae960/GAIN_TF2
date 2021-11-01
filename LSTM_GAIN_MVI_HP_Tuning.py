@@ -9,18 +9,21 @@ import random
 from sklearn.metrics import r2_score
 
 load_dir = 'data'
-save_dir = 'GAIN_HP_Tuning'
+save_dir = 'GAIN_HP_Tuning_2'
 
-data_name = '2_Informed_1_Seoul'
-missing_col = 'ions-ocec-elementals'
+data_name = '4_AP+Meteo_1_Seoul'
+missing_col = 'ocec-elementals'
 seed = 777
 
 missing_rate = 0.2
 hint_rate = 0.8
 alpha = 10
-epochs = int(2000/(missing_rate*10))
 L = 240
 lr = 0.0005
+
+# epochs = 2000
+# epochs = int(6000/(missing_rate*10)) # 2_Informed
+epochs = int(2000 / (missing_rate * 10)) # 4_AP+Meteo
 
 col_dic = {'ocec': ['OC', 'EC'],
            'elementals': ['S', 'K', 'Ca', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Ni', 'Cu', 'Zn', 'As', 'Se', 'Br', 'Pb'],
@@ -89,7 +92,7 @@ train_x = np.nan_to_num(train_x, 0)
 
 # 2. GAIN
 # 2-1) architecture
-structure = 'G:LSTM_50_50, D:LSTM_50_50'
+structure = 'G:2_2_4, D:2_2_4'
 
 def make_generator_model():
     model = tf.keras.Sequential()
@@ -203,7 +206,7 @@ test_x_sq = test_x.reshape(-1, rows, cols*2)
 
 GAIN_imputed = train_x * data_m + generator(test_x_sq, training=False)[0] * (1-data_m)
 GAIN_imputed = np.array(GAIN_imputed)
-GAIN_imputed = GAIN_imputed * (max_vector - min_vector) + min_vector
+GAIN_imputed = GAIN_imputed * (max_vector - min_vector + 1e-10) + min_vector
 
 # 3-2) KNN imputed data
 def knn(n):
